@@ -1,0 +1,9 @@
+Spring:
+  datasource:
+    url: jdbc:mysql://localhost:4040/soa
+    username: root
+    password:
+
+  jpa:
+    hibernate:
+      ddl-auto: none

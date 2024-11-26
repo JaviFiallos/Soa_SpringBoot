@@ -1,0 +1,10 @@
+Spring:
+  datasource:
+    url: jdbc:mysql://localhost:4040/materias
+    username: root
+    password:
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+

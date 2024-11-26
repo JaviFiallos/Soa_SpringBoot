@@ -1,0 +1,286 @@
+Spring:
+  datasource:
+    url: jdbc:mysql://localhost:4040/soa
+    username: root
+    password:
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+//////////////////////////////////////
+
+@Entity
+@Table (name="estudiantes")
+@Data
+public class Estudiante {
+
+    @Id
+    private String cedula;
+    private String nombre;
+    private String apellido;
+    private String direccion;
+    private String telefono;
+}
+///////////////////////////////////////
+
+@Repository
+public interface EstudianteRepository extends JpaRepository<Estudiante, String> {
+
+}
+
+///////////////////////////////////////
+
+public interface EstudianteService {
+    
+    Estudiante crear(Estudiante estudiante);
+    Estudiante modificar(Estudiante estudiante);
+    List<Estudiante> obtenerEstudiantes();
+    void eliminar (String cedula);
+    Estudiante buscarEstudiante(String cedula);
+}
+
+///////////////////////////////////////
+
+
+    @Service
+    public class EstudianteServiceImpl implements EstudianteService {
+
+        @Autowired
+        EstudianteRepository estudianteRepository;
+
+        @Override
+        public Estudiante crear(Estudiante estudiante) {
+            return estudianteRepository.save(estudiante);
+        }
+
+        @Override
+        public Estudiante modificar(Estudiante estudiante) {
+            return estudianteRepository.save(estudiante);
+        }
+
+        @Override
+        public List<Estudiante> obtenerEstudiantes() {
+            return estudianteRepository.findAll();
+        }
+
+        @Override
+        public void eliminar(String cedula) {
+
+            Estudiante estudiante = estudianteRepository.findById(cedula)
+                    .orElseThrow(()-> new ResponseStatusException(HttpStatus.NOT_FOUND));
+            estudianteRepository.delete(estudiante);
+        }
+
+        @Override
+        public Estudiante buscarEstudiante(String cedula) {
+            Estudiante estudiante = estudianteRepository.findById(cedula)
+                    .orElseThrow(()-> new ResponseStatusException(HttpStatus.NOT_FOUND));
+            return estudiante;
+        }
+    }
+
+
+///////////////////////////////////////
+
+
+@Controller
+@RequestMapping ("/estudiantes")
+public class EstudianteVistaController {
+
+    @Autowired
+    private EstudianteService estudianteService;
+
+    @GetMapping
+    public String listarEstudiantes(Model model){
+            model.addAttribute("estudiantes",estudianteService.obtenerEstudiantes());
+        return "lista";
+    }
+
+    @GetMapping("/nuevo")
+    public String mostrarFormularioCrear(Model model){
+        model.addAttribute("estudiante",new Estudiante());
+        return "formulario";
+    }
+
+    @PostMapping("/guardar")
+    public String guardarEstudiante(Estudiante estudiante){
+        estudianteService.crear(estudiante);
+        return "redirect:/estudiantes";
+    }
+
+    @GetMapping("/editar/{cedula}")
+    public String mostrarFormularioEditar(@PathVariable String cedula, Model model){
+        Estudiante estudiante = estudianteService.buscarEstudiante(cedula);
+        model.addAttribute("estudiante",estudiante);
+        return "formulario";
+    }
+
+    @GetMapping("/eliminar/{cedula}")
+    public String eliminarEstudiante(@PathVariable String cedula){
+        estudianteService.eliminar(cedula);
+
+        return "redirect:/estudiantes";
+    }
+
+    @GetMapping("/buscar")
+    public String buscarEstudiante(@RequestParam(required = false) String cedula, Model model) {
+        if (cedula == null || cedula.trim().isEmpty()) {
+            model.addAttribute("estudiantes", estudianteService.obtenerEstudiantes());
+        } else {
+            Estudiante estudiante = estudianteService.buscarEstudiante(cedula);
+            if (estudiante != null) {
+                model.addAttribute("estudiantes", List.of(estudiante));
+            } else {
+                model.addAttribute("estudiantes", List.of());
+                model.addAttribute("mensajeError", "No se encontró ningún estudiante con la cédula");
+            }
+        }
+        return
+      "lista";}
+
+
+}
+
+///////////////////////////////////////
+
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Lista de Estudiantes</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container mt-5">
+    <h1 class="text-center mb-4">Lista de Estudiantes</h1>
+
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <form class="d-flex" th:action="@{/estudiantes/buscar}" method="get">
+                    <div class="input-group">
+                        <input class="form-control form-control-lg" type="search" placeholder="Ingresar cédula"
+                               aria-label="Search" name="cedula">
+                        <button class="btn btn-primary px-4" type="submit">
+                            Buscar<i class="bi bi-search"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        </div>
+    <br>
+
+    <table class="table table-bordered table-hover">
+        <thead class="table-dark">
+        <tr>
+            <th>Cédula</th>
+            <th>Nombre</th>
+            <th>Apellido</th>
+            <th>Dirección</th>
+            <th>Teléfono</th>
+            <th>Acciones</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:if="${#lists.isEmpty(estudiantes)}">
+            <td colspan="6" class="text-center">No se encontraron estudiantes.</td>
+        </tr>
+        <tr th:each="estudiante : ${estudiantes}">
+            <td th:text="${estudiante.cedula}"></td>
+            <td th:text="${estudiante.nombre}"></td>
+            <td th:text="${estudiante.apellido}"></td>
+            <td th:text="${estudiante.direccion}"></td>
+            <td th:text="${estudiante.telefono}"></td>
+            <td>
+                <a th:href="@{/estudiantes/editar/{cedula}(cedula=${estudiante.cedula})}"
+                   class="btn btn-warning btn-sm">Editar</a>
+                <a th:href="@{/estudiantes/eliminar/{cedula}(cedula=${estudiante.cedula})}"
+                   class="btn btn-danger btn-sm">Eliminar</a>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+    <div class="text-end mb-3">
+        <a href="/estudiantes/nuevo" class="btn btn-primary">Agregar Estudiante</a>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+
+///////////////////////////////////////
+
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <title>Formulario Estudiante</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container mt-5">
+  <h1 th:if="${estudiante.cedula==null}" class="text-center mb-4">Agregar Estudiante</h1>
+  <h1 th:if="${estudiante.cedula!=null}" class="text-center mb-4">Editar Estudiante</h1>
+
+  <form th:action="@{/estudiantes/guardar}" th:object="${estudiante}"   method="post" class="mx-auto" style="max-width: 600px;">
+    <div class="mb-3">
+      <label for="cedula" class="form-label">Cédula</label>
+      <input type="text" id="cedula" name="cedula" th:field="*{cedula}" class="form-control" required/>
+    </div>
+    <div class="mb-3">
+      <label for="nombre" class="form-label">Nombre</label>
+      <input type="text" id="nombre" name="nombre" th:field="*{nombre}" class="form-control" required/>
+    </div>
+    <div class="mb-3">
+      <label for="apellido" class="form-label">Apellido</label>
+      <input type="text" id="apellido" name="apellido" th:field="*{apellido}" class="form-control" required/>
+    </div>
+    <div class="mb-3">
+      <label for="direccion" class="form-label">Dirección</label>
+      <input type="text" id="direccion" name="direccion" th:field="*{direccion}" class="form-control" required/>
+    </div>
+    <div class="mb-3">
+      <label for="telefono" class="form-label">Teléfono</label>
+      <input type="text" id="telefono" name="telefono" th:field="*{telefono}" class="form-control" required/>
+    </div>
+    <div class="text-center">
+      <button type="submit" class="btn btn-success">Guardar</button>
+      <a href="/estudiantes" class="btn btn-secondary">Cancelar</a>
+    </div>
+  </form>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+
+///////////////////////////////////////
+
+@RestController
+@RequestMapping("/ApiEstudiantes")
+public class EstudianteControllers {
+
+    @Autowired
+    EstudianteService estudianteService;
+
+    @GetMapping
+    public List<Estudiante> obtenerEstudiantes(){
+        return estudianteService.obtenerEstudiantes();
+    }
+
+    @PostMapping
+    public Estudiante crear(@RequestBody Estudiante estudiante){
+        return estudianteService.crear(estudiante);
+    }
+
+    @PutMapping
+    public Estudiante modificar(@RequestBody Estudiante estudiante){
+        return estudianteService.modificar(estudiante);
+    }
+
+    @DeleteMapping
+    public void eliminar (@RequestParam String cedula){
+        estudianteService.eliminar(cedula);
+    }
+
+}
+
+///////////////////////////////////////
